@@ -2,6 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import streamlit as st
+from styles import apply_groww_style, PLOTLY_THEME, GROWW_GREEN, GROWW_RED, GROWW_PURPLE, GROWW_CARD, GROWW_BORDER, GROWW_MUTED
 import plotly.graph_objects as go
 import pandas as pd
 import numpy as np
@@ -12,6 +13,7 @@ from backend.greeks import calculate_greeks
 from config import RISK_FREE_RATE, LOT_SIZE
 
 st.set_page_config(page_title="Options Chain", layout="wide")
+apply_groww_style()
 st.title("🔗 Options Chain — Nifty 50")
 
 # ── Controls ──────────────────────────────────────────────────────────────────

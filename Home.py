@@ -13,6 +13,11 @@ from backend.market_data import (
     time_to_expiry_days, is_market_open,
 )
 from backend.technical import pcr, rsi, interpret_signals
+from styles import (
+    apply_groww_style, groww_metric, groww_signal_card,
+    PLOTLY_THEME, GROWW_GREEN, GROWW_RED, GROWW_PURPLE,
+    GROWW_CARD, GROWW_BORDER, GROWW_MUTED, GROWW_YELLOW,
+)
 
 st.set_page_config(
     page_title="Nifty Options Terminal",
@@ -20,52 +25,48 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="collapsed",
 )
+apply_groww_style()
 
 IST = pytz.timezone("Asia/Kolkata")
+now_ist    = datetime.now(IST)
+mkt_status = "🟢 OPEN" if is_market_open() else "🔴 CLOSED"
+expiry     = next_weekly_expiry()
+dte        = time_to_expiry_days()
 
-# ── Header ────────────────────────────────────────────────────────────────────
-now_ist = datetime.now(IST)
-mkt_status = "🟢 MARKET OPEN" if is_market_open() else "🔴 MARKET CLOSED"
-expiry = next_weekly_expiry()
-dte    = time_to_expiry_days()
-
+# ── Header bar ───────────────────────────────────────────────────────────────
 st.markdown(
-    f"<h1 style='margin-bottom:0'>📈 Nifty Options Terminal</h1>"
-    f"<p style='color:#888;margin-top:4px'>{now_ist.strftime('%A, %d %b %Y  %H:%M:%S IST')} &nbsp;|&nbsp; "
-    f"{mkt_status} &nbsp;|&nbsp; Next Expiry: {expiry.strftime('%d %b')} "
-    f"({dte:.1f} days)</p>",
+    f"<div style='display:flex;align-items:center;justify-content:space-between;"
+    f"padding:12px 0 20px 0;border-bottom:1px solid {GROWW_BORDER};margin-bottom:24px'>"
+    f"<div>"
+    f"<span style='font-size:22px;font-weight:700;color:#fff'>📈 Nifty Options Terminal</span>"
+    f"</div>"
+    f"<div style='text-align:right'>"
+    f"<div style='font-size:12px;color:{GROWW_MUTED}'>"
+    f"{now_ist.strftime('%a, %d %b %Y  %H:%M IST')}</div>"
+    f"<div style='font-size:12px;margin-top:2px'>"
+    f"{mkt_status} &nbsp;|&nbsp; "
+    f"<span style='color:{GROWW_PURPLE}'>Expiry {expiry.strftime('%d %b')} "
+    f"({dte:.1f}d)</span></div>"
+    f"</div>"
+    f"</div>",
     unsafe_allow_html=True,
 )
-st.divider()
 
 # ── Market metrics ────────────────────────────────────────────────────────────
-nifty   = get_nifty_spot()
-vix     = get_india_vix()
-bnifty  = get_bank_nifty()
-sensex  = get_sensex()
+nifty  = get_nifty_spot()
+vix    = get_india_vix()
+bnifty = get_bank_nifty()
+sensex = get_sensex()
 
 c1, c2, c3, c4 = st.columns(4)
+groww_metric(c1, "Nifty 50",   nifty["price"],  nifty["change"],  nifty["change_pct"])
+groww_metric(c2, "India VIX",  vix["price"],    vix["change"],    vix["change_pct"],   fmt="{:.2f}")
+groww_metric(c3, "Bank Nifty", bnifty["price"], bnifty["change"], bnifty["change_pct"])
+groww_metric(c4, "Sensex",     sensex["price"], sensex["change"], sensex["change_pct"])
 
-def _metric(col, label, price, chng, chng_pct, fmt="{:,.2f}"):
-    arrow = "▲" if chng >= 0 else "▼"
-    color = "#00d4aa" if chng >= 0 else "#ff4d4d"
-    col.markdown(
-        f"<div style='background:#1a1d2e;padding:16px;border-radius:8px;border-left:3px solid {color}'>"
-        f"<div style='color:#888;font-size:12px;text-transform:uppercase'>{label}</div>"
-        f"<div style='font-size:26px;font-weight:700;color:#fff'>{fmt.format(price)}</div>"
-        f"<div style='color:{color};font-size:13px'>{arrow} {abs(chng):,.2f} ({chng_pct:+.2f}%)</div>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
+st.markdown("<div style='height:20px'></div>", unsafe_allow_html=True)
 
-_metric(c1, "Nifty 50",   nifty["price"],  nifty["change"],  nifty["change_pct"])
-_metric(c2, "India VIX",  vix["price"],    vix["change"],    vix["change_pct"], "{:.2f}")
-_metric(c3, "Bank Nifty", bnifty["price"], bnifty["change"], bnifty["change_pct"])
-_metric(c4, "Sensex",     sensex["price"], sensex["change"], sensex["change_pct"])
-
-st.markdown("<br>", unsafe_allow_html=True)
-
-# ── PCR + RSI quick view ──────────────────────────────────────────────────────
+# ── Signal cards ─────────────────────────────────────────────────────────────
 chain_data = get_options_chain("NIFTY")
 df_chain   = chain_data["df"]
 pcr_val    = pcr(df_chain) if not df_chain.empty else 1.0
@@ -73,91 +74,90 @@ pcr_val    = pcr(df_chain) if not df_chain.empty else 1.0
 history = get_nifty_history("1mo", "1d")
 rsi_val = 50.0
 if not history.empty and "Close" in history.columns:
-    rsi_series = rsi(history["Close"])
-    rsi_val    = float(rsi_series.iloc[-1])
+    rsi_val = float(rsi(history["Close"]).iloc[-1])
 
 s1, s2, s3 = st.columns(3)
 
-def _signal_card(col, label, value, low, mid_lo, mid_hi, high, unit="", fmt="{:.2f}"):
-    if value < mid_lo:
-        color, mood = "#ff4d4d", "Bearish"
-    elif value > mid_hi:
-        color, mood = "#00d4aa", "Bullish"
-    else:
-        color, mood = "#ffd700", "Neutral"
-    col.markdown(
-        f"<div style='background:#1a1d2e;padding:14px;border-radius:8px;text-align:center'>"
-        f"<div style='color:#888;font-size:12px'>{label}</div>"
-        f"<div style='font-size:28px;font-weight:700;color:{color}'>{fmt.format(value)}{unit}</div>"
-        f"<div style='color:{color};font-size:12px'>{mood}</div>"
-        f"</div>",
-        unsafe_allow_html=True,
-    )
+pcr_status = "Bullish" if pcr_val > 1.3 else ("Bearish" if pcr_val < 0.7 else "Neutral")
+rsi_status = "Bearish" if rsi_val > 70  else ("Bullish" if rsi_val < 30 else "Neutral")
+vix_status = "High"    if vix["price"] > 20 else ("Low" if vix["price"] < 13 else "Normal")
 
-_signal_card(s1, "PCR (OI)",  pcr_val,    0, 0.7, 1.3, 2, fmt="{:.2f}")
-_signal_card(s2, "RSI (14d)", rsi_val,    0, 40,  60, 100, fmt="{:.1f}")
-_signal_card(s3, "VIX Level", vix["price"], 0, 14, 20, 40, fmt="{:.1f}")
+groww_signal_card(s1, "PCR (OI)",   pcr_val,       pcr_status, fmt="{:.2f}")
+groww_signal_card(s2, "RSI (14d)",  rsi_val,       rsi_status, fmt="{:.1f}")
+groww_signal_card(s3, "VIX Level",  vix["price"],  vix_status, fmt="{:.1f}")
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
-# ── Nifty 50 chart ────────────────────────────────────────────────────────────
-st.subheader("Nifty 50 — 3 Month Chart")
+# ── Nifty chart ───────────────────────────────────────────────────────────────
+st.markdown(
+    f"<div style='font-size:16px;font-weight:600;margin-bottom:12px;color:#fff'>"
+    f"Nifty 50 — 3 Month</div>",
+    unsafe_allow_html=True,
+)
+
 hist3m = get_nifty_history("3mo", "1d")
-
 if not hist3m.empty:
+    rsi_series = rsi(hist3m["Close"]) if "Close" in hist3m.columns else None
     fig = make_subplots(
-        rows=2, cols=1,
-        shared_xaxes=True,
-        row_heights=[0.75, 0.25],
-        vertical_spacing=0.04,
+        rows=2, cols=1, shared_xaxes=True,
+        row_heights=[0.75, 0.25], vertical_spacing=0.04,
     )
     fig.add_trace(go.Candlestick(
         x=hist3m.index,
         open=hist3m["Open"], high=hist3m["High"],
         low=hist3m["Low"],   close=hist3m["Close"],
         name="Nifty 50",
-        increasing_line_color="#00d4aa",
-        decreasing_line_color="#ff4d4d",
+        increasing_line_color=GROWW_GREEN,
+        decreasing_line_color=GROWW_RED,
+        increasing_fillcolor=GROWW_GREEN,
+        decreasing_fillcolor=GROWW_RED,
     ), row=1, col=1)
 
-    rsi_s = rsi(hist3m["Close"]) if "Close" in hist3m.columns else None
-    if rsi_s is not None:
+    if rsi_series is not None:
         fig.add_trace(go.Scatter(
-            x=hist3m.index, y=rsi_s,
-            name="RSI(14)", line=dict(color="#ffd700", width=1.5),
+            x=hist3m.index, y=rsi_series,
+            line=dict(color=GROWW_PURPLE, width=1.8),
+            name="RSI(14)",
         ), row=2, col=1)
-        fig.add_hline(y=70, line_dash="dash", line_color="#ff4d4d", opacity=0.5, row=2, col=1)
-        fig.add_hline(y=30, line_dash="dash", line_color="#00d4aa", opacity=0.5, row=2, col=1)
+        fig.add_hline(y=70, line_dash="dash", line_color=GROWW_RED,   opacity=0.4, row=2, col=1)
+        fig.add_hline(y=30, line_dash="dash", line_color=GROWW_GREEN, opacity=0.4, row=2, col=1)
 
     fig.update_layout(
-        plot_bgcolor="#0e1117",
-        paper_bgcolor="#0e1117",
-        font_color="#e0e0e0",
-        height=500,
+        **PLOTLY_THEME,
+        height=480,
         xaxis_rangeslider_visible=False,
         showlegend=False,
-        margin=dict(l=10, r=10, t=10, b=10),
+        margin=dict(l=0, r=0, t=0, b=0),
     )
-    fig.update_xaxes(gridcolor="#2a2d3e")
-    fig.update_yaxes(gridcolor="#2a2d3e")
     st.plotly_chart(fig, use_container_width=True)
-else:
-    st.info("Historical data unavailable.")
 
-# ── Market signal summary ─────────────────────────────────────────────────────
-st.subheader("Signal Summary")
+st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+
+# ── Signal summary ────────────────────────────────────────────────────────────
+st.markdown(
+    f"<div style='font-size:16px;font-weight:600;margin-bottom:12px;color:#fff'>"
+    f"Signal Summary</div>",
+    unsafe_allow_html=True,
+)
 summary = interpret_signals(rsi_val, pcr_val, vix["price"])
 for part in summary.split(" | "):
-    icon = "🟡"
-    if "overbought" in part or "low — premium" in part:
-        icon = "🔴"
-    elif "oversold" in part or "elevated" in part:
-        icon = "🟢"
-    st.markdown(f"**{icon} {part}**")
+    icon  = "🟡"
+    color = GROWW_YELLOW
+    if any(w in part for w in ["overbought", "low — premium"]):
+        icon, color = "🔴", GROWW_RED
+    elif any(w in part for w in ["oversold", "elevated"]):
+        icon, color = "🟢", GROWW_GREEN
+    st.markdown(
+        f"<div style='background:{GROWW_CARD};border:1px solid {GROWW_BORDER};"
+        f"border-left:3px solid {color};border-radius:0 8px 8px 0;"
+        f"padding:10px 14px;margin-bottom:6px;font-size:13px'>"
+        f"{icon} {part}</div>",
+        unsafe_allow_html=True,
+    )
 
 st.markdown(
-    "<br><div style='color:#555;font-size:11px'>"
-    "Data: NSE India (options), Yahoo Finance (spot). "
-    "For educational and personal use only. Not SEBI-registered advice.</div>",
+    f"<div style='color:{GROWW_MUTED};font-size:10px;margin-top:24px'>"
+    f"Data: NSE India (options), Yahoo Finance (spot prices). "
+    f"For personal use only — not SEBI-registered investment advice.</div>",
     unsafe_allow_html=True,
 )

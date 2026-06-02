@@ -2,6 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import streamlit as st
+from styles import apply_groww_style, PLOTLY_THEME, GROWW_GREEN, GROWW_RED, GROWW_PURPLE, GROWW_CARD, GROWW_BORDER, GROWW_MUTED
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -12,6 +13,7 @@ from backend.technical import (
 )
 
 st.set_page_config(page_title="Signals", layout="wide")
+apply_groww_style()
 st.title("🎯 Market Signals")
 
 period = st.selectbox("Lookback", ["1mo", "3mo", "6mo"], index=1)

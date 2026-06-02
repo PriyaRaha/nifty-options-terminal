@@ -2,6 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import streamlit as st
+from styles import apply_groww_style, PLOTLY_THEME, GROWW_GREEN, GROWW_RED, GROWW_PURPLE, GROWW_CARD, GROWW_BORDER, GROWW_MUTED
 import plotly.graph_objects as go
 
 from backend.market_data import get_nifty_spot, time_to_expiry_days, get_options_chain
@@ -16,6 +17,7 @@ from backend.strategies import (
 from config import LOT_SIZE, RISK_FREE_RATE, STRATEGY_LIST
 
 st.set_page_config(page_title="Strategy Builder", layout="wide")
+apply_groww_style()
 st.title("⚡ Strategy Builder")
 
 # ── Global inputs ─────────────────────────────────────────────────────────────

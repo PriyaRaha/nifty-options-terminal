@@ -2,6 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import streamlit as st
+from styles import apply_groww_style, PLOTLY_THEME, GROWW_GREEN, GROWW_RED, GROWW_PURPLE, GROWW_CARD, GROWW_BORDER, GROWW_MUTED
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import date
@@ -11,6 +12,7 @@ from backend.market_data import get_options_chain
 from config import ACCOUNTS, LOT_SIZE, STRATEGY_LIST
 
 st.set_page_config(page_title="Accounts", layout="wide")
+apply_groww_style()
 st.title("💼 Account Manager")
 
 accounts = get_accounts()

@@ -2,6 +2,7 @@ import sys, os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 import streamlit as st
+from styles import apply_groww_style, PLOTLY_THEME, GROWW_GREEN, GROWW_RED, GROWW_PURPLE, GROWW_CARD, GROWW_BORDER, GROWW_MUTED
 import plotly.graph_objects as go
 import numpy as np
 import pandas as pd
@@ -11,6 +12,7 @@ from backend.market_data import get_nifty_spot, time_to_expiry_days
 from config import RISK_FREE_RATE, LOT_SIZE
 
 st.set_page_config(page_title="Greeks Calculator", layout="wide")
+apply_groww_style()
 st.title("🔢 Greeks & IV Calculator")
 
 tab1, tab2, tab3 = st.tabs(["Option Greeks", "IV Calculator", "Greeks Sensitivity"])
